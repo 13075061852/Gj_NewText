@@ -1,0 +1,138 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+
+:root {
+    --background: #ffffff;
+    --foreground: #0f172a;
+    --secondary: #f1f5f9;
+    --secondary-foreground: #0f172a;
+    --muted: #f1f5f9;
+    --muted-foreground: #64748b;
+    --accent: #f1f5f9;
+    --accent-foreground: #0f172a;
+    --destructive: #ef4444;
+    --border: #e2e8f0;
+    --input: #e2e8f0;
+    --ring: #0f172a;
+    --primary: #0f172a;
+    --primary-foreground: #ffffff;
+    --radius: 0.5rem;
+}
+
+.dark {
+    --background: #020617;
+    --foreground: #f8fafc;
+    --secondary: #1e293b;
+    --secondary-foreground: #f8fafc;
+    --muted: #1e293b;
+    --muted-foreground: #94a3b8;
+    --accent: #1e293b;
+    --accent-foreground: #f8fafc;
+    --destructive: #7f1d1d;
+    --border: #1e293b;
+    --input: #1e293b;
+    --ring: #cbd5e1;
+    --primary: #f8fafc;
+    --primary-foreground: #020617;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--muted-foreground);
+}
+
+/* Table Sticky Styles */
+/* Header Sticky */
+th.sticky-header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    /* 使用纯色背景，确保完全不透明 */
+    background-color: var(--background);
+    /* 移除可能导致透明的rgba设置 */
+    box-shadow: 0 1px 0 var(--border);
+}
+
+/* Column Sticky */
+td.sticky-col, th.sticky-col {
+    position: sticky;
+    left: 0;
+    z-index: 5; /* Lower than header */
+    background-color: var(--background);
+    border-right: 1px solid var(--border);
+}
+
+/* Corner Sticky (Intersection of Header and First Col) */
+th.sticky-col.sticky-header {
+    z-index: 20; /* Highest */
+}
+
+/* Sticky Offset Logic - Handled via JS usually, but basic first col is simple */
+.sticky-col-1 { left: 0; }
+
+/* Toast Animation */
+@keyframes slideIn {
+    from { transform: translateY(100%); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+.toast {
+    animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.toast.exiting {
+    animation: fadeOut 0.3s forwards;
+}
+
+/* Interactive Elements */
+.sheet-item {
+    transition: all 0.2s ease;
+}
+.sheet-item.active {
+    background-color: var(--secondary);
+    color: var(--foreground);
+    font-weight: 500;
+    border-left: 3px solid var(--primary);
+}
+
+/* Drag over effect */
+body.drag-over::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.1);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+    pointer-events: none;
+    border: 4px dashed var(--primary);
+}
+
+/* 参数值样式 */
+.param-value {
+    margin-right: 2px;
+}
+
+/* 平均值特殊颜色标注 */
+.average-value {
+    color: #e91e63;
+    font-weight: bold;
+}
+
+/* 确保表头完全不透明 */
+thead th {
+    background-color: var(--background);
+    color: var(--foreground);
+    font-weight: 600;
+}

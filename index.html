@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Excel Lens | 极简数据透视</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- SheetJS for Excel Parsing -->
+    <script src="https://cdn.sheetjs.com/xlsx-latest/package/dist/xlsx.full.min.js"></script>
+    <link rel="stylesheet" href="styles.css">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        border: "var(--border)",
+                        input: "var(--input)",
+                        ring: "var(--ring)",
+                        background: "var(--background)",
+                        foreground: "var(--foreground)",
+                        primary: {
+                            DEFAULT: "var(--primary)",
+                            foreground: "var(--primary-foreground)",
+                        },
+                        secondary: {
+                            DEFAULT: "var(--secondary)",
+                            foreground: "var(--secondary-foreground)",
+                        },
+                        muted: {
+                            DEFAULT: "var(--muted)",
+                            foreground: "var(--muted-foreground)",
+                        },
+                        accent: {
+                            DEFAULT: "var(--accent)",
+                            foreground: "var(--accent-foreground)",
+                        },
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-background text-foreground antialiased overflow-hidden transition-colors duration-300">
+    
+    <!-- App Layout -->
+    <div class="flex h-screen w-full">
+        
+        <!-- Sidebar: Sheet Navigation -->
+        <aside class="w-56 border-r border-border bg-secondary/30 backdrop-blur-md flex flex-col transition-all duration-300" id="sidebar">
+            <div class="p-4 flex items-center justify-between">
+                <div class="flex items-center gap-2 font-semibold tracking-tight">
+                    <i data-lucide="table" class="w-5 h-5 text-primary"></i>
+                    <span class="text-sm">Excel Lens</span>
+                </div>
+                <button id="theme-toggle" class="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-accent-foreground transition-colors">
+                    <i data-lucide="sun" class="w-4 h-4 dark:hidden"></i>
+                    <i data-lucide="moon" class="w-4 h-4 hidden dark:block"></i>
+                </button>
+            </div>
+
+            <div class="px-3 pb-3">
+                <label for="file-upload" class="flex items-center justify-center w-full h-10 px-3 transition bg-primary text-primary-foreground rounded-lg shadow-sm cursor-pointer hover:opacity-90 focus:outline-none active:scale-95 text-sm">
+                    <i data-lucide="upload" class="w-4 h-4 mr-1.5"></i>
+                    <span class="font-medium">导入 Excel</span>
+                    <input id="file-upload" type="file" class="hidden" accept=".xlsx, .xls, .csv" />
+                </label>
+            </div>
+
+            <div class="flex-1 overflow-y-auto py-2 px-2 space-y-1" id="sheet-list">
+                <!-- Sheet items injected here -->
+                <div class="text-xs text-muted-foreground text-center mt-10">
+                    暂无数据<br>请上传文件
+                </div>
+            </div>
+
+            <div class="p-3 border-t border-border text-xs text-muted-foreground">
+                <div class="flex justify-between items-center">
+                    <span id="file-name-display" class="truncate max-w-[120px]">未选择文件</span>
+                    <button id="reset-btn" class="hover:text-destructive hidden p-1">
+                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="flex-1 flex flex-col h-full relative overflow-hidden">
+            
+            <!-- Top Toolbar -->
+            <header class="h-16 border-b border-border bg-background/80 backdrop-blur-sm flex items-center justify-between px-6 z-20">
+                <div class="flex items-center gap-4">
+                    <!-- Search -->
+                    <div class="relative group flex items-center">
+                        <i data-lucide="search" class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
+                        <input type="text" id="search-input" placeholder="搜索当前表..." class="h-9 w-64 rounded-md border border-input bg-transparent px-9 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+                    </div>
+                    
+                    <div class="h-4 w-px bg-border mx-2"></div>
+
+                    <!-- Freeze Controls -->
+                    <div class="flex items-center gap-2 text-sm text-muted-foreground">
+                        <i data-lucide="snowflake" class="w-4 h-4"></i>
+                        <div class="flex items-center gap-2">
+                            <label class="text-xs">冻结行</label>
+                            <input type="number" id="freeze-row" min="0" max="10" value="1" class="w-12 h-8 rounded-md border border-input bg-transparent text-center text-xs focus:ring-1 focus:ring-ring">
+                        </div>
+                        <div class="flex items-center gap-2 ml-2">
+                            <label class="text-xs">冻结列</label>
+                            <input type="number" id="freeze-col" min="0" max="5" value="0" class="w-12 h-8 rounded-md border border-input bg-transparent text-center text-xs focus:ring-1 focus:ring-ring">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-3">
+                    <button id="export-json" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                        <i data-lucide="download" class="w-4 h-4 mr-2"></i>
+                        JSON
+                    </button>
+                </div>
+            </header>
+
+            <!-- Data Viewport -->
+            <div class="flex-1 relative overflow-auto bg-muted/10 scroll-smooth" id="table-container">
+                <!-- Empty State / Drop Zone -->
+                <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground pointer-events-none">
+                    <div class="w-24 h-24 bg-muted/20 rounded-full flex items-center justify-center mb-4 animate-pulse">
+                        <i data-lucide="file-spreadsheet" class="w-10 h-10 opacity-50"></i>
+                    </div>
+                    <h3 class="text-lg font-medium text-foreground">准备就绪</h3>
+                    <p class="text-sm mt-1 opacity-70">点击左侧上传或直接拖拽 Excel 文件至此</p>
+                </div>
+                
+                <!-- Table injected here -->
+                <table id="data-table" class="w-full text-sm text-left border-collapse hidden">
+                    <thead class="text-xs text-muted-foreground uppercase bg-secondary/50"></thead>
+                    <tbody class="divide-y divide-border"></tbody>
+                </table>
+            </div>
+
+            <!-- Pagination Footer -->
+            <footer class="h-12 border-t border-border bg-background flex items-center justify-between px-6 z-20">
+                <div class="text-xs text-muted-foreground" id="pagination-info">
+                    显示 0 - 0 条，共 0 条
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="prev-page" class="p-1 rounded-md hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                        <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                    </button>
+                    <span class="text-xs font-medium min-w-[3rem] text-center" id="page-indicator">1 / 1</span>
+                    <button id="next-page" class="p-1 rounded-md hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors">
+                        <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                    </button>
+                </div>
+            </footer>
+        </main>
+    </div>
+
+    <!-- Toast Notification Container -->
+    <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+    <script type="module" src="main.js"></script>
+</body>
+</html>
