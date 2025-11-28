@@ -1,4 +1,4 @@
-import { getState, subscribe, setState } from './state_manager.js';
+import { getState, subscribe, setState, addToCompare, removeFromCompare, clearCompareItems } from './state_manager.js';
 import { processActiveSheet, calculateAverage } from './excel_service.js';
 
 const elements = {
@@ -14,7 +14,11 @@ const elements = {
     fileName: document.getElementById('file-name-display'),
     resetBtn: document.getElementById('reset-btn'),
     container: document.getElementById('table-container'),
-    searchInput: document.getElementById('search-input')
+    searchInput: document.getElementById('search-input'),
+    // 对比项显示元素
+    compareItemsContainer: document.getElementById('compare-items-container'),
+    compareItemsPlaceholder: document.getElementById('compare-items-placeholder'),
+    compareCount: document.getElementById('compare-count')
 };
 
 export const initUI = () => {
@@ -39,6 +43,8 @@ export const initUI = () => {
     `;
     document.querySelector('.items-center.gap-4').appendChild(modeToggleContainer);
     
+    // 注意：对比按钮已在HTML中定义，不需要再动态创建
+    
     // 绑定事件
     searchModeBtn.addEventListener('click', toggleSearchMode);
     
@@ -50,6 +56,20 @@ export const initUI = () => {
     document.getElementById('mode-all').addEventListener('click', () => {
         setState({ config: { ...getState().config, displayMode: 'all' } });
         renderTable();
+    });
+    
+    // 绑定数据对比功能事件（使用HTML中定义的按钮）
+    document.getElementById('compare-toggle').addEventListener('click', () => {
+        showCompareDialog();
+    });
+    
+    // 绑定一键操作按钮事件
+    document.getElementById('select-all-btn').addEventListener('click', () => {
+        selectAllFilteredItems();
+    });
+    
+    document.getElementById('clear-selection-btn').addEventListener('click', () => {
+        clearAllSelections();
     });
     
     subscribe((event, payload, state) => {
@@ -76,6 +96,14 @@ export const initUI = () => {
         }
         // 当原始合并数据更新时，也要更新侧边栏
         if (event === 'originalMergedData:updated') {
+            const { sheetNames, activeSheetName } = getState();
+            renderSidebar(sheetNames, activeSheetName);
+        }
+        // 数据对比相关状态更新
+        if (event === 'compareItems:updated') {
+            renderTable(); // 重新渲染表格以更新行的样式
+            renderCompareItems(); // 渲染对比项
+            // 确保侧边栏数量实时更新
             const { sheetNames, activeSheetName } = getState();
             renderSidebar(sheetNames, activeSheetName);
         }
@@ -176,15 +204,18 @@ const renderSidebar = (sheets, active) => {
         return;
     }
     
-    // 获取当前搜索结果数量
-    const { originalMergedData, config } = getState();
+    // 获取当前搜索结果数量和对比项数量
+    const { originalMergedData, config, compareItems } = getState();
     const searchQuery = config.searchQuery;
     const isPreciseSearch = config.isPreciseSearch; // 获取是否为精准查询
     
     sheets.forEach(sheet => {
         // 计算该工作表的结果数量
         let count = 0;
+        let compareCount = 0; // 该表被勾选的数量
+        
         if (originalMergedData && originalMergedData[sheet]) {
+            // 计算搜索结果数量
             if (searchQuery) {
                 // 如果有搜索查询，根据查询类型计算匹配的数量
                 const filteredData = originalMergedData[sheet].filter(row => {
@@ -202,6 +233,15 @@ const renderSidebar = (sheets, active) => {
                 // 如果没有搜索查询，显示总数量
                 count = originalMergedData[sheet].length;
             }
+            
+            // 计算该表被勾选的数量
+            compareCount = compareItems.filter(item => {
+                // 这里需要找到该表中与对比项匹配的行
+                // 由于数据结构的复杂性，我们简单地检查型号和批次是否匹配
+                return originalMergedData[sheet].some(row => 
+                    row['型号'] === item['型号'] && row['批次'] === item['批次']
+                );
+            }).length;
         }
         
         const div = document.createElement('div');
@@ -211,7 +251,10 @@ const renderSidebar = (sheets, active) => {
                 <i data-lucide="table-2" class="w-4 h-4"></i>
                 <span class="truncate">${sheet}</span>
             </div>
-            <span class="bg-secondary text-secondary-foreground text-xs rounded-full px-2 py-0.5">${count}</span>
+            <div class="flex items-center gap-1">
+                <span class="bg-secondary text-secondary-foreground text-xs rounded-full px-2 py-0.5">${count}</span>
+                ${compareCount > 0 ? `<span class="bg-primary text-primary-foreground text-xs rounded-full px-2 py-0.5">${compareCount}</span>` : ''}
+            </div>
         `;
         div.onclick = () => setState({ activeSheetName: sheet });
         elements.sheetList.appendChild(div);
@@ -239,7 +282,7 @@ const highlightSearchTerm = (text, searchTerm) => {
 };
 
 const renderTable = () => {
-    const { processedData, pagination, config } = getState();
+    const { processedData, pagination, config, compareItems } = getState();
     const { currentPage, pageSize } = pagination;
     const { freezeRow, freezeCol, searchQuery, displayMode } = config;
 
@@ -276,9 +319,36 @@ const renderTable = () => {
     elements.thead.appendChild(tr);
 
     // 渲染数据行
-    pageData.forEach((row) => {
+    pageData.forEach((row, rowIndex) => {
         const tr = document.createElement('tr');
         tr.className = "hover:bg-muted/30 transition-colors";
+        
+        // 检查当前行是否在对比项中
+        const isInCompare = compareItems.some(item => 
+            item['型号'] === row['型号'] && item['批次'] === row['批次']
+        );
+        
+        // 如果在对比项中，添加特殊样式
+        if (isInCompare) {
+            tr.classList.add('bg-blue-50', 'border-l-4', 'border-l-blue-500');
+        }
+        
+        // 添加点击事件，用于添加到对比项
+        tr.addEventListener('click', (e) => {
+            // 检查是否应该忽略点击事件
+            // 忽略具有特定类名的元素的点击事件
+            if (e.target.classList.contains('ignore-click') || 
+                e.target.closest('.ignore-click')) {
+                return;
+            }
+            
+            // 切换对比项
+            if (isInCompare) {
+                removeFromCompare(row);
+            } else {
+                addToCompare(row);
+            }
+        });
         
         headerRow.forEach((key, idx) => {
             const value = row[key];
@@ -316,6 +386,59 @@ const renderTable = () => {
     });
     
     updateStickyOffsets();
+};
+
+// 渲染对比项
+const renderCompareItems = () => {
+    const { compareItems } = getState();
+    
+    if (!elements.compareItemsContainer || !elements.compareItemsPlaceholder) return;
+    
+    // 更新对比项数量
+    if (elements.compareCount) {
+        elements.compareCount.textContent = compareItems.length;
+    }
+    
+    // 清空容器
+    elements.compareItemsContainer.innerHTML = '';
+    
+    if (compareItems.length === 0) {
+        // 显示占位符
+        elements.compareItemsContainer.appendChild(elements.compareItemsPlaceholder);
+        elements.compareItemsPlaceholder.style.display = 'block';
+        return;
+    }
+    
+    // 隐藏占位符
+    elements.compareItemsPlaceholder.style.display = 'none';
+    
+    // 渲染对比项
+    compareItems.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-2 rounded text-xs bg-secondary/50 hover:bg-secondary';
+        div.innerHTML = `
+            <div class="truncate">
+                <div class="font-medium truncate">${item['型号'] || '未知型号'}</div>
+                <div class="text-muted-foreground truncate">批次: ${item['批次'] || '未知批次'}</div>
+            </div>
+            <button class="remove-compare-item p-1 rounded hover:bg-accent" data-model="${item['型号'] || ''}" data-batch="${item['批次'] || ''}">
+                <i data-lucide="x" class="w-3 h-3"></i>
+            </button>
+        `;
+        elements.compareItemsContainer.appendChild(div);
+    });
+    
+    // 绑定移除事件
+    document.querySelectorAll('.remove-compare-item').forEach(button => {
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const model = button.getAttribute('data-model');
+            const batch = button.getAttribute('data-batch');
+            removeFromCompare({ '型号': model, '批次': batch });
+        });
+    });
+    
+    lucide.createIcons();
 };
 
 const updateStickyOffsets = () => {
@@ -358,6 +481,247 @@ const updatePaginationControls = () => {
     elements.paginationInfo.textContent = pagination.totalItems > 0 
         ? `显示 ${start} - ${end} 条，共 ${pagination.totalItems} 条`
         : '无数据';
+};
+
+// 一键选择所有筛选结果
+const selectAllFilteredItems = () => {
+    const { processedData, compareItems } = getState();
+    
+    // 获取当前未被选择的项目
+    const unselectedItems = processedData.filter(item => 
+        !compareItems.some(compareItem => 
+            compareItem['型号'] === item['型号'] && compareItem['批次'] === item['批次']
+        )
+    );
+    
+    if (unselectedItems.length === 0) {
+        showToast('当前没有可添加的项目');
+        return;
+    }
+    
+    // 批量添加所有未被选择的项目到对比项中
+    const newCompareItems = [...compareItems, ...unselectedItems];
+    setState({ compareItems: newCompareItems });
+    
+    showToast(`已添加 ${unselectedItems.length} 个项目到对比项`);
+    
+    // 确保侧边栏数量实时更新
+    setTimeout(() => {
+        const { sheetNames, activeSheetName } = getState();
+        renderSidebar(sheetNames, activeSheetName);
+    }, 0);
+};
+
+// 一键清空所有选择
+const clearAllSelections = () => {
+    const { compareItems } = getState();
+    
+    if (compareItems.length === 0) {
+        showToast('当前没有选中的项目');
+        return;
+    }
+    
+    // 保存当前对比项的数量用于提示
+    const count = compareItems.length;
+    
+    // 清空所有对比项
+    clearCompareItems();
+    showToast(`已清空 ${count} 个对比项`);
+    
+    // 确保侧边栏数量实时更新
+    setTimeout(() => {
+        const { sheetNames, activeSheetName } = getState();
+        renderSidebar(sheetNames, activeSheetName);
+    }, 0);
+};
+
+// 执行对比
+const executeCompare = () => {
+    const { compareItems } = getState();
+    
+    if (!elements.compareResult || !elements.compareResultContent) return;
+    
+    if (compareItems.length < 2) {
+        showToast('请至少选择两个数据项进行对比', 'error');
+        return;
+    }
+    
+    // 显示对比结果
+    elements.compareResult.classList.remove('hidden');
+    
+    // 生成对比结果
+    let resultHTML = '<div class="space-y-4">';
+    
+    // 获取所有字段名
+    const allKeys = new Set();
+    compareItems.forEach(item => {
+        Object.keys(item).forEach(key => allKeys.add(key));
+    });
+    
+    // 创建对比表格
+    resultHTML += '<table class="w-full text-sm">';
+    resultHTML += '<thead><tr><th class="text-left p-2">参数</th>';
+    
+    // 表头：每个对比项的型号和批次
+    compareItems.forEach(item => {
+        resultHTML += `<th class="text-left p-2">${item['型号'] || '未知'}<br/><span class="text-xs text-muted-foreground">${item['批次'] || '未知'}</span></th>`;
+    });
+    
+    resultHTML += '</tr></thead><tbody>';
+    
+    // 为每个字段生成对比行
+    allKeys.forEach(key => {
+        // 跳过型号和批次字段，因为它们已经在表头显示
+        if (key === '型号' || key === '批次') return;
+        
+        resultHTML += `<tr class="border-b border-border"><td class="p-2 font-medium">${key}</td>`;
+        
+        compareItems.forEach(item => {
+            const value = item[key];
+            let displayValue = '';
+            
+            if (value === undefined || value === null) {
+                displayValue = '-';
+            } else if (Array.isArray(value)) {
+                // 对于数组值，显示平均值
+                const average = calculateAverage(value);
+                displayValue = `<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>`;
+            } else {
+                displayValue = value.toString();
+            }
+            
+            resultHTML += `<td class="p-2">${displayValue}</td>`;
+        });
+        
+        resultHTML += '</tr>';
+    });
+    
+    resultHTML += '</tbody></table></div>';
+    
+    elements.compareResultContent.innerHTML = resultHTML;
+    
+    showToast('对比完成');
+};
+
+// 显示对比对话框
+const showCompareDialog = () => {
+    const { compareItems } = getState();
+    
+    // 生成对比结果
+    let resultHTML = '<div style="font-family: sans-serif; max-height: 80vh; overflow-y: auto;">';
+    resultHTML += '<h2 style="margin-bottom: 16px; color: #0f172a;">数据对比结果</h2>';
+    
+    if (compareItems.length === 0) {
+        resultHTML += '<p style="color: #64748b;">请先选择要对比的数据项！</p>';
+    } else if (compareItems.length < 2) {
+        resultHTML += '<p style="color: #64748b;">请至少选择两个数据项进行对比！</p>';
+    } else {
+        // 创建对比表格
+        resultHTML += '<table style="width: 100%; border-collapse: collapse; margin-top: 16px;">';
+        resultHTML += '<thead><tr style="background-color: #f1f5f9;">';
+        resultHTML += '<th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">参数</th>';
+        
+        // 表头：每个对比项的型号和批次
+        compareItems.forEach(item => {
+            resultHTML += `<th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">${item['型号'] || '未知'}<br/><span style="font-size: 0.8em; color: #64748b;">${item['批次'] || '未知'}</span></th>`;
+        });
+        
+        resultHTML += '</tr></thead><tbody>';
+        
+        // 获取所有字段名
+        const allKeys = new Set();
+        compareItems.forEach(item => {
+            Object.keys(item).forEach(key => allKeys.add(key));
+        });
+        
+        // 为每个字段生成对比行
+        allKeys.forEach(key => {
+            // 跳过型号和批次字段，因为它们已经在表头显示
+            if (key === '型号' || key === '批次') return;
+            
+            resultHTML += `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 500;">${key}</td>`;
+            
+            compareItems.forEach(item => {
+                const value = item[key];
+                let displayValue = '';
+                
+                if (value === undefined || value === null) {
+                    displayValue = '-';
+                } else if (Array.isArray(value)) {
+                    // 对于数组值，显示平均值
+                    const average = calculateAverage(value);
+                    displayValue = `<span style="color: #e91e63; font-weight: bold;">${average.toFixed(2)}</span>`;
+                } else {
+                    displayValue = value.toString();
+                }
+                
+                resultHTML += `<td style="padding: 8px; border: 1px solid #cbd5e1;">${displayValue}</td>`;
+            });
+            
+            resultHTML += '</tr>';
+        });
+        
+        resultHTML += '</tbody></table>';
+    }
+    
+    resultHTML += '</div>';
+    
+    // 创建自定义弹窗
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+    `;
+    
+    const modalContent = document.createElement('div');
+    modalContent.style.cssText = `
+        background-color: white;
+        padding: 24px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        max-width: 90%;
+        max-height: 90%;
+        overflow: hidden;
+        position: relative;
+    `;
+    
+    modalContent.innerHTML = resultHTML;
+    
+    // 添加关闭按钮
+    const closeBtn = document.createElement('button');
+    closeBtn.innerHTML = '&times;';
+    closeBtn.style.cssText = `
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        background: none;
+        border: none;
+        font-size: 24px;
+        cursor: pointer;
+        color: #64748b;
+    `;
+    
+    closeBtn.onclick = () => {
+        document.body.removeChild(modal);
+    };
+    
+    modal.onclick = (e) => {
+        if (e.target === modal) {
+            document.body.removeChild(modal);
+        }
+    };
+    
+    modalContent.appendChild(closeBtn);
+    modal.appendChild(modalContent);
+    document.body.appendChild(modal);
 };
 
 export const showToast = (message, type = 'info') => {

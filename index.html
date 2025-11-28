@@ -78,6 +78,20 @@
                 </div>
             </div>
 
+            <!-- 对比项显示区域 -->
+            <div class="px-3 py-2 border-t border-border">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs font-medium text-muted-foreground">对比项</div>
+                    <span id="compare-count" class="text-xs bg-primary text-primary-foreground rounded-full px-2 py-0.5">0</span>
+                </div>
+                <div id="compare-items-container" class="space-y-1 max-h-48 overflow-y-auto mt-1">
+                    <div id="compare-items-placeholder" class="text-xs text-muted-foreground text-center py-4">
+                        无对比项
+                    </div>
+                    <!-- 对比项将在这里动态添加 -->
+                </div>
+            </div>
+
             <div class="p-3 border-t border-border text-xs text-muted-foreground">
                 <div class="flex justify-between items-center">
                     <span id="file-name-display" class="truncate max-w-[120px]">未选择文件</span>
@@ -98,6 +112,21 @@
                     <div class="relative group flex items-center">
                         <i data-lucide="search" class="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors"></i>
                         <input type="text" id="search-input" placeholder="搜索当前表..." class="h-9 w-64 rounded-md border border-input bg-transparent px-9 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50">
+                    </div>
+                    
+                    <div class="h-4 w-px bg-border mx-2"></div>
+
+                    <!-- 一键操作按钮 -->
+                    <div class="flex items-center gap-2">
+                        <button id="select-all-btn" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-3 py-2">
+                            <i data-lucide="check-square" class="w-4 h-4 mr-1"></i>全选
+                        </button>
+                        <button id="clear-selection-btn" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-3 py-2">
+                            <i data-lucide="square" class="w-4 h-4 mr-1"></i>清空
+                        </button>
+                        <button id="compare-toggle" class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-3 py-2">
+                            <i data-lucide="bar-chart-3" class="w-4 h-4 mr-1"></i>对比
+                        </button>
                     </div>
                     
                     <div class="h-4 w-px bg-border mx-2"></div>
@@ -163,6 +192,7 @@
     <!-- Toast Notification Container -->
     <div id="toast-container" class="fixed bottom-6 right-6 z-50 flex flex-col gap-2 pointer-events-none"></div>
 
+    <!-- 数据对比面板 -->
     <script type="module" src="main.js"></script>
 </body>
 </html>

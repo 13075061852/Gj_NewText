@@ -1,7 +1,7 @@
 import { initTheme } from './theme.js';
 import { initUI, showToast } from './ui_controller.js';
 import { handleFileUpload, loadDefaultTestFile } from './excel_service.js';
-import { setState, getState, resetState } from './state_manager.js';
+import { setState, getState, resetState, addToCompare, removeFromCompare, clearCompareItems, toggleComparePanel } from './state_manager.js';
 import { processActiveSheet } from './excel_service.js';
 
 document.addEventListener('DOMContentLoaded', () => {
@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const nextBtn = document.getElementById('next-page');
     const exportBtn = document.getElementById('export-json');
     const resetBtn = document.getElementById('reset-btn');
+    const compareToggle = document.getElementById('compare-toggle');
 
 
     fileInput.addEventListener('change', (e) => handleFileUpload(e.target.files[0]));
@@ -108,6 +109,13 @@ document.addEventListener('DOMContentLoaded', () => {
         showToast('导出成功');
     });
 
+
+    // 数据对比功能事件绑定
+    if (compareToggle) {
+        compareToggle.addEventListener('click', () => {
+            toggleComparePanel();
+        });
+    }
 
     lucide.createIcons();
 });

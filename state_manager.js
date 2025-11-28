@@ -12,6 +12,10 @@ const state = {
     processedData: [],  // Currently displayed data (after search/filter)
     originalMergedData: {}, // 原始合并数据用于搜索
     
+    // 数据对比相关状态
+    compareItems: [],   // 用于对比的数据项
+    isComparePanelOpen: false, // 对比面板是否打开
+    
     pagination: {
         currentPage: 1,
         pageSize: 50,
@@ -73,6 +77,8 @@ export const resetState = () => {
     state.data = {};
     state.processedData = [];
     state.originalMergedData = {};
+    state.compareItems = []; // 重置对比项
+    state.isComparePanelOpen = false; // 关闭对比面板
     state.pagination = { currentPage: 1, pageSize: 50, totalItems: 0 };
     state.config.searchQuery = '';
     state.config.isPreciseSearch = false;
@@ -80,4 +86,34 @@ export const resetState = () => {
     state.config.freezeRow = 1; // 重置时设为默认值
     state.config.freezeCol = 2; // 重置时设为默认值
     notify('state:reset');
+};
+
+// 添加到对比项的函数
+export const addToCompare = (item) => {
+    const existingIndex = state.compareItems.findIndex(compareItem => 
+        compareItem['型号'] === item['型号'] && compareItem['批次'] === item['批次']
+    );
+    
+    if (existingIndex === -1) {
+        // 如果不存在，则添加
+        setState({ compareItems: [...state.compareItems, item] });
+    }
+};
+
+// 从对比项中移除的函数
+export const removeFromCompare = (item) => {
+    const filteredItems = state.compareItems.filter(compareItem => 
+        !(compareItem['型号'] === item['型号'] && compareItem['批次'] === item['批次'])
+    );
+    setState({ compareItems: filteredItems });
+};
+
+// 清空对比项
+export const clearCompareItems = () => {
+    setState({ compareItems: [] });
+};
+
+// 切换对比面板状态
+export const toggleComparePanel = () => {
+    setState({ isComparePanelOpen: !state.isComparePanelOpen });
 };

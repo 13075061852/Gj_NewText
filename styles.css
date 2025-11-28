@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap');
+/* 移除了原来的 @import 语句，改为在 HTML 中更高效地加载 */
 
 :root {
     --background: #ffffff;

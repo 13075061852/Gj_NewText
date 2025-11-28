@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 
-const PORT = 8080; // 修改端口号
+const PORT = process.env.PORT || 8081; // Changed from 8080 to 8081
 
 const MIME_TYPES = {
   '.html': 'text/html',
@@ -54,6 +54,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
+// Start server
 server.listen(PORT, () => {
-  console.log(`Server running at http://localhost:${PORT}/`);
+    console.log(`Server running at http://localhost:${PORT}/`);
 });
