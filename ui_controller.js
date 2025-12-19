@@ -22,26 +22,114 @@ const elements = {
 };
 
 export const initUI = () => {
+    const menuToggle = document.getElementById('menu-toggle');
+    const sidebar = document.getElementById('sidebar');
+    const sidebarBackdrop = document.getElementById('sidebar-backdrop');
+
+    const toggleSidebar = () => {
+        sidebar.classList.toggle('-translate-x-full');
+        sidebarBackdrop.classList.toggle('hidden');
+    };
+
+    if (menuToggle) {
+        menuToggle.addEventListener('click', toggleSidebar);
+    }
+
+    if (sidebarBackdrop) {
+        sidebarBackdrop.addEventListener('click', toggleSidebar);
+    }
+
+    // Mobile actions menu logic
+    const actionsMenuToggle = document.getElementById('actions-menu-toggle');
+    const actionsMenu = document.getElementById('actions-menu');
+
+    if (actionsMenuToggle && actionsMenu) {
+        const actions = [
+            { id: 'select-all-btn', icon: 'check-square', label: '全选' },
+            { id: 'clear-selection-btn', icon: 'square', label: '清空' },
+            { id: 'compare-toggle', icon: 'bar-chart-3', label: '对比' },
+            { id: 'export-json', icon: 'download', label: '导出JSON' }
+        ];
+
+        let actionsHTML = actions.map(action => `
+            <button data-action-id="${action.id}" class="w-full text-left px-4 py-2 text-sm text-foreground hover:bg-accent flex items-center gap-2 first:rounded-t-md last:rounded-b-md">
+                <i data-lucide="${action.icon}" class="w-4 h-4 text-muted-foreground"></i>
+                <span>${action.label}</span>
+            </button>
+        `).join('');
+
+        // Add Display Mode controls to mobile dropdown
+        actionsHTML += `
+            <div class="px-3 py-2 border-t border-border text-sm">
+                <div class="flex items-center justify-between">
+                    <label class="text-muted-foreground">显示模式</label>
+                    <div class="flex rounded-md overflow-hidden border border-input text-xs">
+                        <button id="mode-average-mobile" class="px-2 py-1 transition-colors">平均值</button>
+                        <button id="mode-all-mobile" class="px-2 py-1 transition-colors">参数</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Add freeze controls to mobile dropdown
+        actionsHTML += `
+
+            <div class="px-3 py-2 border-t border-border space-y-2 text-sm">
+                <div class="flex items-center justify-between">
+                    <label for="freeze-row-mobile" class="text-muted-foreground flex items-center gap-1"><i data-lucide="snowflake" class="w-4 h-4"></i>冻结行</label>
+                    <input type="number" id="freeze-row-mobile" min="0" max="10" class="w-16 h-7 rounded-md border border-input bg-transparent text-center text-xs focus:ring-1 focus:ring-ring">
+                </div>
+                <div class="flex items-center justify-between">
+                    <label for="freeze-col-mobile" class="text-muted-foreground flex items-center gap-1"><i data-lucide="snowflake" class="w-4 h-4"></i>冻结列</label>
+                    <input type="number" id="freeze-col-mobile" min="0" max="5" class="w-16 h-7 rounded-md border border-input bg-transparent text-center text-xs focus:ring-1 focus:ring-ring">
+                </div>
+            </div>
+        `;
+
+        actionsMenu.innerHTML = actionsHTML;
+
+        actionsMenu.addEventListener('click', (e) => {
+            const button = e.target.closest('button');
+            if (!button) return;
+
+            // Handle main actions with data-action-id
+            if (button.dataset.actionId) {
+                const originalButton = document.getElementById(button.dataset.actionId);
+                if (originalButton) {
+                    originalButton.click();
+                }
+                actionsMenu.classList.add('hidden'); // Close menu after main action
+                return;
+            }
+
+            // Handle display mode buttons
+            if (e.target.id === 'mode-average-mobile') {
+                setState({ config: { ...getState().config, displayMode: 'average' } });
+                renderTable();
+            }
+            if (e.target.id === 'mode-all-mobile') {
+                setState({ config: { ...getState().config, displayMode: 'all' } });
+                renderTable();
+            }
+        });
+
+        actionsMenuToggle.addEventListener('click', (e) => {
+            e.stopPropagation();
+            actionsMenu.classList.toggle('hidden');
+        });
+
+        // Close dropdown when clicking outside
+        window.addEventListener('click', (e) => {
+            if (!actionsMenu.classList.contains('hidden') && !actionsMenu.contains(e.target) && !actionsMenuToggle.contains(e.target)) {
+                actionsMenu.classList.add('hidden');
+            }
+        });
+    }
     lucide.createIcons();
     
-    // 添加搜索模式切换按钮（默认为模糊查询）
-    const searchModeBtn = document.createElement('button');
-    searchModeBtn.id = 'search-mode-btn';
-    searchModeBtn.className = 'ml-2 inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-transparent shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-3 py-2';
-    searchModeBtn.innerHTML = '<i data-lucide="search" class="w-4 h-4 mr-1"></i>模糊查询';
-    elements.searchInput.parentNode.appendChild(searchModeBtn);
+    const searchModeBtn = document.getElementById('search-mode-btn');
     
-    // 添加显示模式切换按钮
-    const modeToggleContainer = document.createElement('div');
-    modeToggleContainer.className = 'flex items-center gap-2 ml-4';
-    modeToggleContainer.innerHTML = `
-        <span class="text-xs text-muted-foreground">显示模式:</span>
-        <div class="flex rounded-md overflow-hidden border border-input">
-            <button id="mode-average" class="px-3 py-1.5 text-xs font-medium transition-colors bg-background text-foreground hover:bg-accent">平均值</button>
-            <button id="mode-all" class="px-3 py-1.5 text-xs font-medium transition-colors bg-primary text-primary-foreground">参数</button>
-        </div>
-    `;
-    document.querySelector('.items-center.gap-4').appendChild(modeToggleContainer);
+
     
     // 注意：对比按钮已在HTML中定义，不需要再动态创建
     
@@ -109,10 +197,32 @@ export const initUI = () => {
         }
     });
     
-    // 初始化冻结行和冻结列的默认值
-    const { config } = getState();
-    document.getElementById('freeze-row').value = config.freezeRow;
-    document.getElementById('freeze-col').value = config.freezeCol;
+    // Freeze controls synchronization
+    const freezeRowInput = document.getElementById('freeze-row');
+    const freezeColInput = document.getElementById('freeze-col');
+    const freezeRowMobileInput = document.getElementById('freeze-row-mobile');
+    const freezeColMobileInput = document.getElementById('freeze-col-mobile');
+
+    const syncFreezeValues = () => {
+        const { config } = getState();
+        freezeRowInput.value = config.freezeRow;
+        freezeColInput.value = config.freezeCol;
+        freezeRowMobileInput.value = config.freezeRow;
+        freezeColMobileInput.value = config.freezeCol;
+    };
+
+    const updateFreezeState = (key, value) => {
+        setState({ config: { ...getState().config, [key]: value } });
+        syncFreezeValues();
+    };
+
+    freezeRowInput.addEventListener('change', (e) => updateFreezeState('freezeRow', parseInt(e.target.value) || 0));
+    freezeColInput.addEventListener('change', (e) => updateFreezeState('freezeCol', parseInt(e.target.value) || 0));
+    freezeRowMobileInput.addEventListener('change', (e) => updateFreezeState('freezeRow', parseInt(e.target.value) || 0));
+    freezeColMobileInput.addEventListener('change', (e) => updateFreezeState('freezeCol', parseInt(e.target.value) || 0));
+
+    // Initial sync
+    syncFreezeValues();
     
     // 初始化显示模式按钮状态
     updateModeButtons();
@@ -165,13 +275,24 @@ const updateSearchModeButton = () => {
 
 const updateModeButtons = () => {
     const { displayMode } = getState().config;
-    document.getElementById('mode-average').className = displayMode === 'average' 
-        ? 'px-3 py-1.5 text-xs font-medium transition-colors bg-primary text-primary-foreground' 
-        : 'px-3 py-1.5 text-xs font-medium transition-colors bg-background text-foreground hover:bg-accent';
-        
-    document.getElementById('mode-all').className = displayMode === 'all' 
-        ? 'px-3 py-1.5 text-xs font-medium transition-colors bg-primary text-primary-foreground' 
-        : 'px-3 py-1.5 text-xs font-medium transition-colors bg-background text-foreground hover:bg-accent';
+    const activeClass = 'bg-primary text-primary-foreground';
+    const inactiveClass = 'bg-background text-foreground hover:bg-accent';
+
+    // Desktop buttons
+    const modeAverageDesktop = document.getElementById('mode-average');
+    const modeAllDesktop = document.getElementById('mode-all');
+    if(modeAverageDesktop && modeAllDesktop) {
+        modeAverageDesktop.className = `px-2 py-1 transition-colors ${displayMode === 'average' ? activeClass : inactiveClass}`;
+        modeAllDesktop.className = `px-2 py-1 transition-colors ${displayMode === 'all' ? activeClass : inactiveClass}`;
+    }
+
+    // Mobile buttons
+    const modeAverageMobile = document.getElementById('mode-average-mobile');
+    const modeAllMobile = document.getElementById('mode-all-mobile');
+    if(modeAverageMobile && modeAllMobile) {
+        modeAverageMobile.className = `px-2 py-1 transition-colors ${displayMode === 'average' ? activeClass : inactiveClass}`;
+        modeAllMobile.className = `px-2 py-1 transition-colors ${displayMode === 'all' ? activeClass : inactiveClass}`;
+    }
 };
 
 const renderReset = () => {
@@ -330,7 +451,7 @@ const renderTable = () => {
         
         // 如果在对比项中，添加特殊样式
         if (isInCompare) {
-            tr.classList.add('bg-blue-50', 'border-l-4', 'border-l-blue-500');
+            tr.classList.add('row-selected');
         }
         
         // 添加点击事件，用于添加到对比项
@@ -605,124 +726,81 @@ const executeCompare = () => {
 
 // 显示对比对话框
 const showCompareDialog = () => {
+    const dialog = document.getElementById('compare-dialog');
+    const content = document.getElementById('compare-dialog-content');
+    const closeBtn = document.getElementById('close-compare-dialog');
+
     const { compareItems } = getState();
-    
-    // 生成对比结果
-    let resultHTML = '<div style="font-family: sans-serif; max-height: 80vh; overflow-y: auto;">';
-    resultHTML += '<h2 style="margin-bottom: 16px; color: #0f172a;">数据对比结果</h2>';
-    
+
+    let resultHTML = '';
+
     if (compareItems.length === 0) {
-        resultHTML += '<p style="color: #64748b;">请先选择要对比的数据项！</p>';
+        resultHTML = '<p class="text-muted-foreground">请先选择要对比的数据项！</p>';
     } else if (compareItems.length < 2) {
-        resultHTML += '<p style="color: #64748b;">请至少选择两个数据项进行对比！</p>';
+        resultHTML = '<p class="text-muted-foreground">请至少选择两个数据项进行对比！</p>';
     } else {
-        // 创建对比表格
-        resultHTML += '<table style="width: 100%; border-collapse: collapse; margin-top: 16px;">';
-        resultHTML += '<thead><tr style="background-color: #f1f5f9;">';
-        resultHTML += '<th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">参数</th>';
-        
-        // 表头：每个对比项的型号和批次
+        resultHTML += '<table>';
+        resultHTML += '<thead><tr><th>参数</th>';
+
         compareItems.forEach(item => {
-            resultHTML += `<th style="padding: 8px; border: 1px solid #cbd5e1; text-align: left;">${item['型号'] || '未知'}<br/><span style="font-size: 0.8em; color: #64748b;">${item['批次'] || '未知'}</span></th>`;
+            resultHTML += `<th>${item['型号'] || '未知'}<br/><span class="text-xs text-muted-foreground">${item['批次'] || '未知'}</span></th>`;
         });
-        
+
         resultHTML += '</tr></thead><tbody>';
-        
-        // 获取所有字段名
+
         const allKeys = new Set();
         compareItems.forEach(item => {
             Object.keys(item).forEach(key => allKeys.add(key));
         });
-        
-        // 为每个字段生成对比行
+
         allKeys.forEach(key => {
-            // 跳过型号和批次字段，因为它们已经在表头显示
             if (key === '型号' || key === '批次') return;
-            
-            resultHTML += `<tr style="border-bottom: 1px solid #e2e8f0;"><td style="padding: 8px; border: 1px solid #cbd5e1; font-weight: 500;">${key}</td>`;
-            
+
+            resultHTML += `<tr><td class="font-medium">${key}</td>`;
+
             compareItems.forEach(item => {
                 const value = item[key];
                 let displayValue = '';
-                
+
                 if (value === undefined || value === null) {
                     displayValue = '-';
                 } else if (Array.isArray(value)) {
-                    // 对于数组值，显示平均值
                     const average = calculateAverage(value);
-                    displayValue = `<span style="color: #e91e63; font-weight: bold;">${average.toFixed(2)}</span>`;
+                    displayValue = `<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>`;
                 } else {
                     displayValue = value.toString();
                 }
-                
-                resultHTML += `<td style="padding: 8px; border: 1px solid #cbd5e1;">${displayValue}</td>`;
+
+                resultHTML += `<td>${displayValue}</td>`;
             });
-            
+
             resultHTML += '</tr>';
         });
-        
+
         resultHTML += '</tbody></table>';
     }
-    
-    resultHTML += '</div>';
-    
-    // 创建自定义弹窗
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background-color: rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-        z-index: 9999;
-    `;
-    
-    const modalContent = document.createElement('div');
-    modalContent.style.cssText = `
-        background-color: white;
-        padding: 24px;
-        border-radius: 8px;
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-        max-width: 90%;
-        max-height: 90%;
-        overflow: hidden;
-        position: relative;
-    `;
-    
-    modalContent.innerHTML = resultHTML;
-    
-    // 添加关闭按钮
-    const closeBtn = document.createElement('button');
-    closeBtn.innerHTML = '&times;';
-    closeBtn.style.cssText = `
-        position: absolute;
-        top: 8px;
-        right: 12px;
-        background: none;
-        border: none;
-        font-size: 24px;
-        cursor: pointer;
-        color: #64748b;
-    `;
-    
-    closeBtn.onclick = () => {
-        document.body.removeChild(modal);
+
+    content.innerHTML = resultHTML;
+
+    dialog.classList.remove('hidden');
+    dialog.classList.add('flex');
+
+    const closeDialog = () => {
+        dialog.classList.add('hidden');
+        dialog.classList.remove('flex');
     };
-    
-    modal.onclick = (e) => {
-        if (e.target === modal) {
-            document.body.removeChild(modal);
+
+    closeBtn.onclick = closeDialog;
+    dialog.onclick = (e) => {
+        if (e.target === dialog) {
+            closeDialog();
         }
     };
-    
-    modalContent.appendChild(closeBtn);
-    modal.appendChild(modalContent);
-    document.body.appendChild(modal);
+
+    lucide.createIcons();
 };
+
+
 
 export const showToast = (message, type = 'info') => {
     const container = document.getElementById('toast-container');
