@@ -10,8 +10,14 @@ export const calculateAverage = (arr) => {
         return 0;
     }
     
-    // 过滤出数字值
-    const numbers = arr.filter(value => !isNaN(parseFloat(value))).map(value => parseFloat(value));
+    // 过滤出数字值，同时处理特殊标记（如'>10'）
+    const numbers = arr.filter(value => {
+        // 如果是特殊标记，不参与平均值计算
+        if (typeof value === 'string' && (value.startsWith('>') || value.startsWith('<'))) {
+            return false;
+        }
+        return !isNaN(parseFloat(value));
+    }).map(value => parseFloat(value));
     
     if (numbers.length === 0) {
         return 0;
@@ -29,9 +35,14 @@ export const calculateAverage = (arr) => {
  * @param {boolean} isIdentifier - 是否为标识字段（型号或批次）
  */
 export const mergeFieldValue = (targetObj, key, value, isIdentifier) => {
-    // 对于标识字段不过滤，其他字段只保留数字类型值
-    if (!isIdentifier && (isNaN(parseFloat(value)) || !isFinite(value))) {
-        return;
+    // 对于标识字段不过滤，其他字段保留数字类型值和特殊标记（如'>10'）
+    if (!isIdentifier) {
+        // 检查是否为特殊标记格式（如'>10', '<5'等）
+        if (typeof value === 'string' && (value.startsWith('>') || value.startsWith('<'))) {
+            // 保留特殊标记
+        } else if (isNaN(parseFloat(value)) || !isFinite(value)) {
+            return;
+        }
     }
     
     // 处理字段名相似的情况，将它们合并到同一个数组中
@@ -57,14 +68,27 @@ export const mergeFieldValue = (targetObj, key, value, isIdentifier) => {
         }
     }
     
+    // 调试信息：输出要处理的值
+    console.log('mergeFieldValue 处理的值:', value, '类型:', typeof value, '是否为特殊标记:', typeof value === 'string' && (value.startsWith('>') || value.startsWith('<')));
+    
     // 如果字段已存在，则转换为数组并添加新值
     if (existingKey) {
         if (!Array.isArray(targetObj[existingKey])) {
             targetObj[existingKey] = [targetObj[existingKey]];
         }
-        targetObj[existingKey].push(isIdentifier ? value : parseFloat(value));
+        // 根据是否为特殊标记来决定是否转换为数字
+        if (isIdentifier || (typeof value === 'string' && (value.startsWith('>') || value.startsWith('<')))) {
+            targetObj[existingKey].push(value);
+        } else {
+            targetObj[existingKey].push(parseFloat(value));
+        }
     } else {
-        targetObj[key] = isIdentifier ? value : parseFloat(value);
+        // 根据是否为特殊标记来决定是否转换为数字
+        if (isIdentifier || (typeof value === 'string' && (value.startsWith('>') || value.startsWith('<')))) {
+            targetObj[key] = value;
+        } else {
+            targetObj[key] = parseFloat(value);
+        }
     }
 };
 

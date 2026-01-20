@@ -479,19 +479,50 @@ const renderTable = () => {
             
             let displayValue = '';
             
-            if (value === undefined || value === null) {
-                displayValue = '';
+            // 输出原始数据用于调试
+            console.log('原始数据:', value, '键:', key);
+            
+            if (value === undefined || value === null || value === '') {
+                displayValue = '-';
             } else if (Array.isArray(value)) {
                 // 根据显示模式决定如何显示数据
-                const average = calculateAverage(value);
                 if (displayMode === 'average') {
+                    // 计算平均值，处理特殊标记如>10
+                    const numericValues = value.filter(v => {
+                        return v !== undefined && v !== null && v !== '' && 
+                               (typeof v === 'number' || /^\d+(\.\d+)?$/.test(String(v)) || String(v).startsWith('>')); 
+                    }).map(v => {
+                        if (String(v).startsWith('>')) {
+                            const numPart = String(v).substring(1);
+                            return parseFloat(numPart) || 0;
+                        }
+                        return parseFloat(v) || 0;
+                    });
+                    const average = numericValues.length > 0 ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : 0;
                     // 默认显示平均值
                     displayValue = `<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>`;
                 } else {
-                    // 显示所有参数值
-                    const bracketValues = value.map(v => 
-                        `<span class="param-value">[${highlightSearchTerm(v, searchQuery)}]</span>`
-                    ).join('');
+                    // 显示所有参数值，包括特殊标记如>10
+                    const bracketValues = value.map(v => {
+                        if (v === undefined || v === null || v === '') {
+                            return '<span class="param-value">[-]</span>';
+                        } else {
+                            return `<span class="param-value">[${highlightSearchTerm(v, searchQuery)}]</span>`;
+                        }
+                    }).join('');
+                    
+                    // 计算平均值用于显示
+                    const numericValues = value.filter(v => {
+                        return v !== undefined && v !== null && v !== '' && 
+                               (typeof v === 'number' || /^\d+(\.\d+)?$/.test(String(v)) || String(v).startsWith('>')); 
+                    }).map(v => {
+                        if (String(v).startsWith('>')) {
+                            const numPart = String(v).substring(1);
+                            return parseFloat(numPart) || 0;
+                        }
+                        return parseFloat(v) || 0;
+                    });
+                    const average = numericValues.length > 0 ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : 0;
                     displayValue = `${bracketValues} (<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>)`;
                 }
             } else {
@@ -773,7 +804,36 @@ const showCompareDialog = () => {
             closeDialog();
         }
     };
+    
+    // 延迟绑定分页按钮事件，确保DOM元素已渲染
+    setTimeout(() => {
+        const prevBtn = document.getElementById('prev-page-compare');
+        const nextBtn = document.getElementById('next-page-compare');
+        
+        if (prevBtn) {
+            prevBtn.onclick = () => {
+                console.log('点击上一页'); // 添加控制台输出
+                if (window.compareDialogCurrentPage > 1) {
+                    window.compareDialogCurrentPage--;
+                    renderCompareDialogContent();
+                }
+            };
+        }
+        
+        if (nextBtn) {
+            nextBtn.onclick = () => {
+                console.log('点击下一页'); // 添加控制台输出
+                if (window.compareDialogCurrentPage < window.totalPagesForCompareDialog) {
+                    window.compareDialogCurrentPage++;
+                    renderCompareDialogContent();
+                }
+            };
+        }
+    }, 100); // 延迟100毫秒以确保DOM完全渲染
 
+    lucide.createIcons();
+    
+    // 重新初始化Lucide图标
     lucide.createIcons();
 };
 
@@ -794,8 +854,9 @@ const renderCompareDialogContent = () => {
             window.compareDialogCurrentPage = 1;
         }
         
-        // 计算每屏显示的行数
-        const rowsPerPage = 10; // 每屏显示10行
+        // 计算每屏显示的行数（参数个数）和列数（每组数据作为一个列）
+        const rowsPerPage = 6; // 每屏显示6行（6个参数）
+        const colsPerPage = 10; // 每屏显示10列（10组数据）
         
         // 获取所有键
         const allKeys = new Set();
@@ -806,8 +867,11 @@ const renderCompareDialogContent = () => {
         // 过滤掉型号和批次字段
         const filteredKeys = Array.from(allKeys).filter(key => key !== '型号' && key !== '批次');
         
-        // 计算总页数
+        // 计算总页数（基于行数，即参数个数）
         const totalPages = Math.ceil(filteredKeys.length / rowsPerPage);
+        
+        // 存储总页数到全局变量，供分页按钮使用
+        window.totalPagesForCompareDialog = totalPages;
         
         // 获取当前页码（如果不存在则默认为第一页）
         let currentPage = window.compareDialogCurrentPage || 1;
@@ -822,6 +886,8 @@ const renderCompareDialogContent = () => {
         const startIndex = (currentPage - 1) * rowsPerPage;
         const endIndex = Math.min(startIndex + rowsPerPage, filteredKeys.length);
         const currentKeys = filteredKeys.slice(startIndex, endIndex);
+        
+        console.log(`Total parameters: ${filteredKeys.length}, Total pages: ${Math.ceil(filteredKeys.length / rowsPerPage)}, Current page: ${currentPage}, Parameters on current page: ${currentKeys.length}`); // 调试信息
         
         // 生成表格
         resultHTML += '<div class="compare-table-container">';
@@ -840,20 +906,49 @@ const renderCompareDialogContent = () => {
             compareItems.forEach(item => {
                 const value = item[key];
                 let displayValue = '';
-
-                if (value === undefined || value === null) {
+                
+                // 输出原始数据用于调试
+                console.log('对比弹窗原始数据:', value, '键:', key);
+                
+                if (value === undefined || value === null || value === '') {
                     displayValue = '-';
                 } else if (Array.isArray(value)) {
                     if (compareDialogDisplayMode === 'all') {
-                        // 显示所有参数值
-                        const bracketValues = value.map(v => 
-                            `<span class="param-value">[${v}]</span>`
-                        ).join('');
-                        const average = calculateAverage(value);
+                        // 显示所有参数值，包括特殊标记如>10
+                        const bracketValues = value.map(v => {
+                            if (v === undefined || v === null || v === '') {
+                                return '<span class="param-value">[-]</span>';
+                            } else {
+                                return `<span class="param-value">[${v}]</span>`;
+                            }
+                        }).join('');
+                        // 计算平均值时，只对数值型数据计算
+                        const numericValues = value.filter(v => {
+                            return v !== undefined && v !== null && v !== '' && 
+                                   (typeof v === 'number' || /^\d+(\.\d+)?$/.test(String(v)) || String(v).startsWith('>')); 
+                        }).map(v => {
+                            if (String(v).startsWith('>')) {
+                                // 如果是'>数字'格式，提取数字部分
+                                const numPart = String(v).substring(1);
+                                return parseFloat(numPart) || 0;
+                            }
+                            return parseFloat(v) || 0;
+                        });
+                        const average = numericValues.length > 0 ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : 0;
                         displayValue = `${bracketValues} (<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>)`;
                     } else {
-                        // 显示平均值
-                        const average = calculateAverage(value);
+                        // 显示平均值，同样处理特殊标记
+                        const numericValues = value.filter(v => {
+                            return v !== undefined && v !== null && v !== '' && 
+                                   (typeof v === 'number' || /^\d+(\.\d+)?$/.test(String(v)) || String(v).startsWith('>')); 
+                        }).map(v => {
+                            if (String(v).startsWith('>')) {
+                                const numPart = String(v).substring(1);
+                                return parseFloat(numPart) || 0;
+                            }
+                            return parseFloat(v) || 0;
+                        });
+                        const average = numericValues.length > 0 ? numericValues.reduce((a, b) => a + b, 0) / numericValues.length : 0;
                         displayValue = `<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>`;
                     }
                 } else {
@@ -885,33 +980,100 @@ const renderCompareDialogContent = () => {
         }
     }
 
-    content.innerHTML = resultHTML;
-    
-    // 初始化分页按钮事件
-    if (typeof totalPages !== 'undefined' && totalPages > 1) {
-        const prevBtn = document.getElementById('prev-page-compare');
-        const nextBtn = document.getElementById('next-page-compare');
+    // 添加淡出效果
+    const container = document.querySelector('.compare-table-container');
+    if (container) {
+        // 保存当前滚动位置
+        const scrollTop = container.scrollTop;
         
-        if (prevBtn) {
-            prevBtn.onclick = () => {
-                if (window.compareDialogCurrentPage > 1) {
-                    window.compareDialogCurrentPage--;
-                    renderCompareDialogContent();
+        container.style.opacity = '0';
+        
+        // 等待DOM更新后设置内容
+        setTimeout(() => {
+            content.innerHTML = resultHTML;
+            
+            // 恢复滚动位置
+            container.scrollTop = scrollTop;
+            
+            // 添加淡入效果
+            setTimeout(() => {
+                if (container) {
+                    container.style.opacity = '1';
                 }
-            };
-        }
+                
+                // 每次渲染后重新绑定分页按钮事件
+                setTimeout(() => {
+                    const prevBtn = document.getElementById('prev-page-compare');
+                    const nextBtn = document.getElementById('next-page-compare');
+                    
+                    if (prevBtn) {
+                        prevBtn.onclick = null; // 清除旧事件
+                        prevBtn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('点击上一页'); // 添加控制台输出
+                            if (window.compareDialogCurrentPage > 1) {
+                                window.compareDialogCurrentPage--;
+                                renderCompareDialogContent();
+                            }
+                        };
+                    }
+                    
+                    if (nextBtn) {
+                        nextBtn.onclick = null; // 清除旧事件
+                        nextBtn.onclick = (e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            console.log('点击下一页'); // 添加控制台输出
+                            if (window.compareDialogCurrentPage < window.totalPagesForCompareDialog) {
+                                window.compareDialogCurrentPage++;
+                                renderCompareDialogContent();
+                            }
+                        };
+                    }
+                    
+                    // 重新初始化Lucide图标
+                    lucide.createIcons();
+                }, 50); // 稍微延迟确保元素已渲染
+            }, 50);
+        }, 10);
+    } else {
+        content.innerHTML = resultHTML;
         
-        if (nextBtn) {
-            nextBtn.onclick = () => {
-                if (window.compareDialogCurrentPage < totalPages) {
-                    window.compareDialogCurrentPage++;
-                    renderCompareDialogContent();
-                }
-            };
-        }
-        
-        // 重新初始化Lucide图标
-        lucide.createIcons();
+        // 每次渲染后重新绑定分页按钮事件
+        setTimeout(() => {
+            const prevBtn = document.getElementById('prev-page-compare');
+            const nextBtn = document.getElementById('next-page-compare');
+            
+            if (prevBtn) {
+                prevBtn.onclick = null; // 清除旧事件
+                prevBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('点击上一页'); // 添加控制台输出
+                    if (window.compareDialogCurrentPage > 1) {
+                        window.compareDialogCurrentPage--;
+                        renderCompareDialogContent();
+                    }
+                };
+            }
+            
+            if (nextBtn) {
+                nextBtn.onclick = null; // 清除旧事件
+                nextBtn.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    console.log('点击下一页'); // 添加控制台输出
+                    if (window.compareDialogCurrentPage < window.totalPagesForCompareDialog) {
+                        window.compareDialogCurrentPage++;
+                        renderCompareDialogContent();
+                    }
+                };
+            }
+            
+            // 重新初始化Lucide图标
+            lucide.createIcons();
+        }, 50); // 稍微延迟确保元素已渲染
     }
 };
 
