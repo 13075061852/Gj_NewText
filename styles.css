@@ -122,6 +122,13 @@ body.drag-over::after {
 /* 参数值样式 */
 .param-value {
     margin-right: 2px;
+    white-space: nowrap;
+    display: inline-block;
+}
+
+#compare-dialog-content .param-value {
+    white-space: nowrap;
+    display: inline-block;
 }
 
 /* 平均值特殊颜色标注 */
@@ -148,10 +155,32 @@ body.drag-over::after {
     margin-top: 1rem;
 }
 
+/* 对比弹窗表格容器 */
+.compare-table-container {
+    max-height: calc(90vh - 200px); /* 调整最大高度，为头部和分页控件留出空间 */
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/* 数据对比弹窗宽度调整 */
+#compare-dialog .bg-background {
+    width: auto;
+    max-width: 90vw; /* 增加最大宽度至视口的90% */
+    min-width: 800px; /* 确保有足够的宽度显示数据 */
+}
+
+
+
 #compare-dialog-content th, #compare-dialog-content td {
     padding: 0.75rem 1rem;
     border: 1px solid var(--border);
-    text-align: left;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+}
+
+#compare-dialog-content td {
+    max-width: 250px; /* 增加单元格最大宽度，充分利用扩展的弹窗空间 */
 }
 
 #compare-dialog-content th {
@@ -168,4 +197,12 @@ thead th {
     background-color: var(--background);
     color: var(--foreground);
     font-weight: 600;
+    text-align: center;
+}
+
+#data-table td {
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    max-width: 300px; /* 限制单元格最大宽度，防止表格过宽 */
 }

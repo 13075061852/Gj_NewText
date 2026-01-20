@@ -224,7 +224,16 @@
     <div id="compare-dialog" class="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 hidden items-center justify-center p-4">
         <div class="bg-background rounded-lg shadow-xl w-full max-w-4xl max-h-[90vh] flex flex-col">
             <header class="p-4 border-b border-border flex items-center justify-between">
-                <h2 class="text-lg font-semibold">数据对比</h2>
+                <div class="flex items-center gap-4">
+                    <h2 class="text-lg font-semibold">数据对比</h2>
+                    <!-- 显示模式切换 -->
+                    <div class="flex items-center gap-2">
+                        <span class="text-xs text-muted-foreground">显示模式:</span>
+                        <button id="compare-mode-toggle" class="px-3 py-1 rounded-md border border-input text-xs transition-colors">
+                            <span id="compare-mode-text">平均值</span>
+                        </button>
+                    </div>
+                </div>
                 <button id="close-compare-dialog" class="p-1.5 rounded-md hover:bg-accent">
                     <i data-lucide="x" class="w-5 h-5"></i>
                 </button>

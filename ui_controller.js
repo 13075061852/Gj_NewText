@@ -725,63 +725,40 @@ const executeCompare = () => {
 };
 
 // 显示对比对话框
+// 添加对比弹窗显示模式状态
+let compareDialogDisplayMode = 'average'; // 默认为平均值模式
+
 const showCompareDialog = () => {
     const dialog = document.getElementById('compare-dialog');
     const content = document.getElementById('compare-dialog-content');
     const closeBtn = document.getElementById('close-compare-dialog');
-
-    const { compareItems } = getState();
-
-    let resultHTML = '';
-
-    if (compareItems.length === 0) {
-        resultHTML = '<p class="text-muted-foreground">请先选择要对比的数据项！</p>';
-    } else if (compareItems.length < 2) {
-        resultHTML = '<p class="text-muted-foreground">请至少选择两个数据项进行对比！</p>';
-    } else {
-        resultHTML += '<table>';
-        resultHTML += '<thead><tr><th>参数</th>';
-
-        compareItems.forEach(item => {
-            resultHTML += `<th>${item['型号'] || '未知'}<br/><span class="text-xs text-muted-foreground">${item['批次'] || '未知'}</span></th>`;
-        });
-
-        resultHTML += '</tr></thead><tbody>';
-
-        const allKeys = new Set();
-        compareItems.forEach(item => {
-            Object.keys(item).forEach(key => allKeys.add(key));
-        });
-
-        allKeys.forEach(key => {
-            if (key === '型号' || key === '批次') return;
-
-            resultHTML += `<tr><td class="font-medium">${key}</td>`;
-
-            compareItems.forEach(item => {
-                const value = item[key];
-                let displayValue = '';
-
-                if (value === undefined || value === null) {
-                    displayValue = '-';
-                } else if (Array.isArray(value)) {
-                    const average = calculateAverage(value);
-                    displayValue = `<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>`;
-                } else {
-                    displayValue = value.toString();
-                }
-
-                resultHTML += `<td>${displayValue}</td>`;
-            });
-
-            resultHTML += '</tr>';
-        });
-
-        resultHTML += '</tbody></table>';
+    
+    // 获取并设置显示模式按钮状态
+    const compareModeToggleBtn = document.getElementById('compare-mode-toggle');
+    const compareModeTextSpan = document.getElementById('compare-mode-text');
+    
+    const updateCompareModeButton = () => {
+        if (compareModeTextSpan) {
+            compareModeTextSpan.textContent = compareDialogDisplayMode === 'average' ? '平均值' : '参数';
+        }
+    };
+    
+    // 绑定显示模式按钮事件
+    if (compareModeToggleBtn) {
+        compareModeToggleBtn.onclick = () => {
+            // 切换显示模式
+            compareDialogDisplayMode = compareDialogDisplayMode === 'average' ? 'all' : 'average';
+            updateCompareModeButton();
+            renderCompareDialogContent(); // 重新渲染对话框内容
+        };
     }
-
-    content.innerHTML = resultHTML;
-
+    
+    // 初始化按钮状态
+    updateCompareModeButton();
+    
+    // 渲染对话框内容
+    renderCompareDialogContent();
+    
     dialog.classList.remove('hidden');
     dialog.classList.add('flex');
 
@@ -798,6 +775,144 @@ const showCompareDialog = () => {
     };
 
     lucide.createIcons();
+};
+
+// 分离出对话框内容渲染函数，便于复用
+const renderCompareDialogContent = () => {
+    const content = document.getElementById('compare-dialog-content');
+    const { compareItems } = getState();
+
+    let resultHTML = '';
+
+    if (compareItems.length === 0) {
+        resultHTML = '<p class="text-muted-foreground">请先选择要对比的数据项！</p>';
+    } else if (compareItems.length < 2) {
+        resultHTML = '<p class="text-muted-foreground">请至少选择两个数据项进行对比！</p>';
+    } else {
+        // 确保全局变量已初始化
+        if (typeof window.compareDialogCurrentPage === 'undefined') {
+            window.compareDialogCurrentPage = 1;
+        }
+        
+        // 计算每屏显示的行数
+        const rowsPerPage = 10; // 每屏显示10行
+        
+        // 获取所有键
+        const allKeys = new Set();
+        compareItems.forEach(item => {
+            Object.keys(item).forEach(key => allKeys.add(key));
+        });
+        
+        // 过滤掉型号和批次字段
+        const filteredKeys = Array.from(allKeys).filter(key => key !== '型号' && key !== '批次');
+        
+        // 计算总页数
+        const totalPages = Math.ceil(filteredKeys.length / rowsPerPage);
+        
+        // 获取当前页码（如果不存在则默认为第一页）
+        let currentPage = window.compareDialogCurrentPage || 1;
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+        if (currentPage < 1) {
+            currentPage = 1;
+        }
+        
+        // 计算当前页的数据
+        const startIndex = (currentPage - 1) * rowsPerPage;
+        const endIndex = Math.min(startIndex + rowsPerPage, filteredKeys.length);
+        const currentKeys = filteredKeys.slice(startIndex, endIndex);
+        
+        // 生成表格
+        resultHTML += '<div class="compare-table-container">';
+        resultHTML += '<table>';
+        resultHTML += '<thead><tr><th>参数</th>';
+
+        compareItems.forEach(item => {
+            resultHTML += `<th>${item['型号'] || '未知'}<br/><span class="text-xs text-muted-foreground">${item['批次'] || '未知'}</span></th>`;
+        });
+
+        resultHTML += '</tr></thead><tbody>';
+
+        currentKeys.forEach(key => {
+            resultHTML += `<tr><td class="font-medium">${key}</td>`;
+
+            compareItems.forEach(item => {
+                const value = item[key];
+                let displayValue = '';
+
+                if (value === undefined || value === null) {
+                    displayValue = '-';
+                } else if (Array.isArray(value)) {
+                    if (compareDialogDisplayMode === 'all') {
+                        // 显示所有参数值
+                        const bracketValues = value.map(v => 
+                            `<span class="param-value">[${v}]</span>`
+                        ).join('');
+                        const average = calculateAverage(value);
+                        displayValue = `${bracketValues} (<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>)`;
+                    } else {
+                        // 显示平均值
+                        const average = calculateAverage(value);
+                        displayValue = `<span class="text-pink-600 font-bold">${average.toFixed(2)}</span>`;
+                    }
+                } else {
+                    displayValue = value.toString();
+                }
+
+                resultHTML += `<td>${displayValue}</td>`;
+            });
+
+            resultHTML += '</tr>';
+        });
+
+        resultHTML += '</tbody></table>';
+        resultHTML += '</div>';
+        
+        // 添加分页控制
+        if (totalPages > 1) {
+            resultHTML += '<div class="pagination-controls flex items-center justify-center gap-4 mt-4">';
+            resultHTML += `<button id="prev-page-compare" class="p-2 rounded-md hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${currentPage <= 1 ? 'opacity-30 cursor-not-allowed' : ''}" ${currentPage <= 1 ? 'disabled' : ''}>
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>`;
+            
+            resultHTML += `<span class="text-sm font-medium min-w-[3rem] text-center">${currentPage} / ${totalPages}</span>`;
+            
+            resultHTML += `<button id="next-page-compare" class="p-2 rounded-md hover:bg-accent disabled:opacity-30 disabled:cursor-not-allowed transition-colors ${currentPage >= totalPages ? 'opacity-30 cursor-not-allowed' : ''}" ${currentPage >= totalPages ? 'disabled' : ''}>
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </button>`;
+            resultHTML += '</div>';
+        }
+    }
+
+    content.innerHTML = resultHTML;
+    
+    // 初始化分页按钮事件
+    if (typeof totalPages !== 'undefined' && totalPages > 1) {
+        const prevBtn = document.getElementById('prev-page-compare');
+        const nextBtn = document.getElementById('next-page-compare');
+        
+        if (prevBtn) {
+            prevBtn.onclick = () => {
+                if (window.compareDialogCurrentPage > 1) {
+                    window.compareDialogCurrentPage--;
+                    renderCompareDialogContent();
+                }
+            };
+        }
+        
+        if (nextBtn) {
+            nextBtn.onclick = () => {
+                if (window.compareDialogCurrentPage < totalPages) {
+                    window.compareDialogCurrentPage++;
+                    renderCompareDialogContent();
+                }
+            };
+        }
+        
+        // 重新初始化Lucide图标
+        lucide.createIcons();
+    }
 };
 
 
