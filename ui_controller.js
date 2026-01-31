@@ -712,7 +712,7 @@ const executeCompare = () => {
     
     // 创建对比表格
     resultHTML += '<table class="w-full text-sm">';
-    resultHTML += '<thead><tr><th class="text-left p-2">参数</th>';
+    resultHTML += '<thead><tr><th class="text-left p-2 sticky-first-col">参数</th>';
     
     // 表头：每个对比项的型号和批次
     compareItems.forEach(item => {
@@ -726,7 +726,7 @@ const executeCompare = () => {
         // 跳过型号和批次字段，因为它们已经在表头显示
         if (key === '型号' || key === '批次') return;
         
-        resultHTML += `<tr class="border-b border-border"><td class="p-2 font-medium">${key}</td>`;
+        resultHTML += `<tr class="border-b border-border"><td class="p-2 font-medium sticky-first-col">${key}</td>`;
         
         compareItems.forEach(item => {
             const value = item[key];
@@ -892,7 +892,7 @@ const renderCompareDialogContent = () => {
         // 生成表格
         resultHTML += '<div class="compare-table-container">';
         resultHTML += '<table>';
-        resultHTML += '<thead><tr><th>参数</th>';
+        resultHTML += '<thead><tr><th class="sticky-first-col">参数</th>';
 
         compareItems.forEach(item => {
             resultHTML += `<th>${item['型号'] || '未知'}<br/><span class="text-xs text-muted-foreground">${item['批次'] || '未知'}</span></th>`;
@@ -901,7 +901,7 @@ const renderCompareDialogContent = () => {
         resultHTML += '</tr></thead><tbody>';
 
         currentKeys.forEach(key => {
-            resultHTML += `<tr><td class="font-medium">${key}</td>`;
+            resultHTML += `<tr><td class="font-medium sticky-first-col">${key}</td>`;
 
             compareItems.forEach(item => {
                 const value = item[key];

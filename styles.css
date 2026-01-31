@@ -69,12 +69,19 @@ td.sticky-col, th.sticky-col {
     left: 0;
     z-index: 5; /* Lower than header */
     background-color: var(--background);
-    border-right: 1px solid var(--border);
+    border-right: 1px solid var(--border) !important; /* 只保留右边框，避免边框叠加 */
+    box-shadow: inset 0 0 0 1px var(--border); /* 添加内部阴影确保边框显示 */
+    text-align: center;
+    vertical-align: middle;
 }
 
 /* Corner Sticky (Intersection of Header and First Col) */
 th.sticky-col.sticky-header {
     z-index: 20; /* Highest */
+    border-right: 1px solid var(--border) !important; /* 只保留右边框，避免边框叠加 */
+    box-shadow: inset 0 0 0 1px var(--border); /* 添加内部阴影确保边框显示 */
+    text-align: center;
+    vertical-align: middle;
 }
 
 /* Sticky Offset Logic - Handled via JS usually, but basic first col is simple */
@@ -154,30 +161,313 @@ body.drag-over::after {
     border-collapse: collapse;
     margin-top: 1rem;
     border: 1px solid var(--border); /* 添加边框以明确表格范围 */
+    table-layout: auto; /* 允许表格根据内容自适应列宽 */
+    font-size: 0.8rem; /* 设置较小的字体大小 */
+    min-width: max-content; /* 确保表格至少适应其内容，允许水平滚动 */
 }
 
 /* 对比弹窗表格容器 */
 .compare-table-container {
-    /* 移除滚动条，确保严格分页 */
-    overflow-y: hidden;
+    /* 启用垂直滚动以显示全部内容 */
+    overflow-y: auto;
     overflow-x: auto;
     height: auto;
-    /* 限制容器高度，确保分页效果 */
-    max-height: calc(90vh - 200px); /* 为头部和分页控件留出空间 */
-    /* 确保每页显示固定数量的行 */
-    min-height: 400px; /* 大约可以容纳10行数据 */
+    /* 限制容器最大高度，确保分页效果 */
+    max-height: calc(70vh - 150px); /* 调整容器高度以适应小屏幕 */
+    /* 确保最小高度以适应内容 */
+    min-height: 300px; /* 调整最小高度以适应小屏幕 */
     /* 添加过渡效果以减少切换时的闪烁 */
     transition: opacity 0.2s ease-in-out;
     /* 确保内容完整显示 */
     display: flex;
     flex-direction: column;
+    /* 添加滚动条样式 */
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) var(--background);
+}
+
+/* 响应式设计：针对小屏幕的样式调整 */
+@media (max-width: 768px) {
+    body {
+        font-size: 0.875rem; /* 减小基础字体大小 */
+    }
+    
+    /* 调整主表字体大小 */
+    #data-table {
+        font-size: 0.75rem;
+    }
+    
+    #data-table th,
+    #data-table td {
+        padding: 0.5rem;
+        max-width: 150px; /* 限制单元格最大宽度，便于移动设备显示 */
+    }
+    
+    /* 调整工具栏字体大小 */
+    header {
+        padding: 0.5rem;
+    }
+    
+    /* 调整搜索输入框字体大小 */
+    #search-input {
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem 0.5rem 2rem;
+    }
+    
+    /* 调整按钮字体大小 */
+    button {
+        font-size: 0.75rem;
+        padding: 0.5rem;
+    }
+    
+    /* 调整侧边栏字体大小 */
+    #sidebar {
+        width: 200px;
+    }
+    
+    .sheet-item {
+        font-size: 0.8rem;
+        padding: 0.5rem;
+    }
+    
+    /* 调整对比弹窗的字体大小 */
+    #compare-dialog .bg-background {
+        width: 95vw;
+        min-width: 300px; /* 调整最小宽度以适应小屏幕 */
+        max-width: 95vw;
+        margin: auto; /* 保持居中 */
+    }
+    
+    #compare-dialog-content {
+        padding: 1rem;
+        overflow-x: auto; /* 确保在小屏幕上表格可以横向滚动 */
+    }
+    
+    #compare-dialog-content table {
+        font-size: 0.75rem;
+        min-width: 100%; /* 确保表格至少占据容器宽度 */
+    }
+    
+    #compare-dialog-content th,
+    #compare-dialog-content td {
+        padding: 0.5rem 0.5rem;
+        min-width: 60px; /* 调整最小宽度以适应小屏幕 */
+        max-width: 100px; /* 限制最大宽度 */
+        overflow: hidden; /* 隐藏超出的内容 */
+        text-overflow: ellipsis; /* 超出时显示省略号 */
+    }
+    
+    /* 确保表头（参数名称）不换行 */
+    #compare-dialog-content th {
+        white-space: nowrap;
+    }
+    
+    /* 允许数据单元格换行 */
+    #compare-dialog-content td {
+        white-space: normal;
+        word-break: break-word; /* 允许长文本换行 */
+    }
+    
+    /* 调整对比弹窗的表头 */
+    #compare-dialog-content th {
+        font-size: 0.75rem;
+        padding: 0.5rem;
+        min-width: 70px; /* 调整表头最小宽度 */
+        max-width: 120px; /* 限制表头最大宽度 */
+    }
+    
+    /* 调整对比弹窗的分页控件 */
+    .pagination-controls {
+        margin-top: 0.5rem;
+        gap: 0.5rem;
+        flex-wrap: wrap; /* 在小屏幕上允许分页控件换行 */
+    }
+    
+    /* 调整页脚分页控件 */
+    footer {
+        padding: 0.5rem 1rem;
+        height: auto;
+        min-height: 40px;
+        flex-direction: column; /* 在小屏幕上垂直排列元素 */
+    }
+    
+    #pagination-info {
+        font-size: 0.75rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    #page-indicator {
+        font-size: 0.875rem;
+    }
+    
+    /* 调整移动端菜单 */
+    #actions-menu {
+        width: 200px;
+        font-size: 0.8rem;
+    }
+    
+    /* 确保对比弹窗表格容器在小屏幕上表现良好 */
+    .compare-table-container {
+        max-height: calc(70vh - 150px); /* 在小屏幕上为弹窗头部和分页控件留出更多空间 */
+        min-height: 250px; /* 确保最小高度以显示内容 */
+    }
+}
+
+/* 针对更小屏幕（如手机）的额外优化 */
+@media (max-width: 480px) {
+    body {
+        font-size: 0.8rem;
+    }
+    
+    #data-table {
+        font-size: 0.7rem;
+    }
+    
+    #data-table th,
+    #data-table td {
+        padding: 0.25rem;
+        max-width: 120px;
+    }
+    
+    /* 进一步减小侧边栏 */
+    #sidebar {
+        width: 180px;
+    }
+    
+    .sheet-item {
+        font-size: 0.75rem;
+        padding: 0.25rem;
+    }
+    
+    /* 针对非常小的屏幕优化对比弹窗 */
+    #compare-dialog .bg-background {
+        width: 98vw;
+        min-width: 300px; /* 调整最小宽度以适应小屏幕 */
+        max-width: 98vw;
+        margin: auto; /* 保持居中 */
+    }
+    
+    #compare-dialog-content {
+        padding: 0.5rem;
+    }
+    
+    #compare-dialog-content table {
+        font-size: 0.65rem;
+        min-width: 100%;
+        table-layout: auto; /* 确保表格可以自适应列宽 */
+    }
+    
+    #compare-dialog-content th,
+    #compare-dialog-content td {
+        padding: 0.25rem;
+        min-width: 35px; /* 进一步减小最小宽度以适应小屏幕 */
+        max-width: 70px; /* 限制最大宽度 */
+        overflow: hidden; /* 隐藏超出的内容 */
+        text-overflow: ellipsis; /* 超出时显示省略号 */
+    }
+    
+    /* 确保表头（参数名称）不换行 */
+    #compare-dialog-content th {
+        white-space: nowrap;
+    }
+    
+    /* 允许数据单元格换行 */
+    #compare-dialog-content td {
+        white-space: normal;
+        word-break: break-word; /* 允许长单词换行 */
+    }
+    
+    #compare-dialog-content th {
+        font-size: 0.7rem;
+        min-width: 45px; /* 调整表头最小宽度 */
+        max-width: 90px; /* 限制表头最大宽度 */
+    }
+    
+    /* 对比弹窗表格容器进一步优化 */
+    .compare-table-container {
+        max-height: calc(65vh - 120px);
+        min-height: 200px; /* 在小屏幕上也需要最小高度 */
+    }
+    
+    /* 工具栏更紧凑 */
+    header {
+        padding: 0.25rem;
+    }
+    
+    /* 按钮更小 */
+    button {
+        font-size: 0.7rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    /* 搜索输入框更紧凑 */
+    #search-input {
+        font-size: 0.8rem;
+        padding: 0.25rem 0.5rem 0.25rem 1.5rem;
+    }
+    
+    /* 页脚更紧凑 */
+    footer {
+        padding: 0.25rem 0.5rem;
+        min-height: 35px;
+    }
+    
+    #pagination-info {
+        font-size: 0.7rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    #page-indicator {
+        font-size: 0.8rem;
+    }
+    
+    /* 移动端菜单更紧凑 */
+    #actions-menu {
+        width: 180px;
+        font-size: 0.75rem;
+    }
+    
+    /* 优化对比弹窗中的滚动条显示 */
+    #compare-dialog-content {
+        overflow-x: auto;
+    }
+    
+    /* 优化参数值显示 */
+    .param-value {
+        font-size: 0.6rem;
+    }
+    
+    /* 优化对比弹窗中的参数值显示 */
+    #compare-dialog-content .param-value {
+        font-size: 0.55rem;
+        display: inline-block;
+        max-width: 50px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* 针对超小屏幕的进一步优化 */
+    #compare-dialog .bg-background {
+        margin-top: 10px;
+    }
+}
+
+/* 数据对比弹窗居中调整 */
+#compare-dialog:not(.hidden) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 /* 数据对比弹窗宽度调整 */
 #compare-dialog .bg-background {
     width: auto;
-    max-width: 90vw; /* 增加最大宽度至视口的90% */
-    min-width: 800px; /* 确保有足够的宽度显示数据 */
+    max-width: 95vw; /* 增加最大宽度至视口的95% */
+    min-width: 300px; /* 调整最小宽度以适应小屏幕 */
+    max-height: 85vh; /* 限制最大高度，允许内部滚动 */
+    display: flex;
+    flex-direction: column;
+    margin: auto; /* 确保在容器中居中 */
 }
 
 
@@ -186,12 +476,22 @@ body.drag-over::after {
     padding: 0.75rem 1rem;
     border: 1px solid var(--border);
     text-align: center;
-    white-space: nowrap;
     overflow: hidden;
+    max-width: 120px; /* 限制单元格最大宽度 */
+}
+
+/* 确保表头（参数名称）不换行 */
+#compare-dialog-content th {
+    white-space: nowrap;
+}
+
+/* 允许数据单元格换行 */
+#compare-dialog-content td {
+    white-space: normal;
 }
 
 #compare-dialog-content td {
-    max-width: 250px; /* 增加单元格最大宽度，充分利用扩展的弹窗空间 */
+    max-width: 120px; /* 调整单元格最大宽度以适应小屏幕 */
 }
 
 #compare-dialog-content th {
@@ -209,10 +509,52 @@ thead th {
     color: var(--foreground);
     font-weight: 600;
     text-align: center;
+    white-space: nowrap; /* 确保参数行不换行 */
+}
+
+/* 允许数据行换行 */
+tbody td {
+    white-space: normal;
+}
+
+/* 固定参数列在最左侧 */
+th.sticky-first-col, td.sticky-first-col {
+    position: sticky;
+    left: 0;
+    z-index: 30; /* 确保参数列在最顶层 */
+    background-color: var(--background);
+    border-right: 1px solid var(--border) !important; /* 保留右边框 */
+    border-top: 0 !important; /* 移除上边框，避免边框叠加 */
+    border-bottom: 0 !important; /* 移除下边框，避免边框叠加 */
+    min-width: max-content; /* 确保内容完全显示 */
+    white-space: nowrap; /* 确保内容不换行 */
+    overflow: hidden; /* 隐藏溢出内容 */
+    text-overflow: ellipsis; /* 溢出时显示省略号 */
+    text-align: center; /* 文本水平居中 */
+    vertical-align: middle; /* 文本垂直居中 */
+}
+
+/* 特别针对对比弹窗中的固定列 */
+#compare-dialog-content th.sticky-first-col, 
+#compare-dialog-content td.sticky-first-col {
+    position: sticky;
+    left: 0;
+    z-index: 35; /* 比一般固定列更高的层级 */
+    background-color: var(--background);
+    border-right: 1px solid var(--border) !important; /* 只保留右边框，避免边框叠加 */
+    box-shadow: inset 0 0 0 1px var(--border); /* 添加内部阴影确保边框显示 */
+    vertical-align: middle; /* 垂直居中对齐 */
+    text-align: center; /* 文本居中对齐 */
+    padding-left: 1rem;
+    padding-right: 1rem;
+    white-space: nowrap; /* 确保内容不换行 */
+    overflow: hidden; /* 隐藏溢出内容 */
+    text-overflow: ellipsis; /* 溢出时显示省略号 */
 }
 
 #data-table td {
     text-align: center;
+    vertical-align: middle;
     white-space: nowrap;
     overflow: hidden;
     max-width: 300px; /* 限制单元格最大宽度，防止表格过宽 */
