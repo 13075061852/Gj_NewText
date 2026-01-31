@@ -146,13 +146,8 @@ body.drag-over::after {
 
 /* 选中行样式 */
 .row-selected {
-    background-color: var(--accent);
-    --tw-ring-offset-shadow: var(--tw-ring-inset) 0 0 0 var(--tw-ring-offset-width) var(--tw-ring-offset-color);
-    --tw-ring-shadow: var(--tw-ring-inset) 0 0 0 calc(2px + var(--tw-ring-offset-width)) var(--tw-ring-color);
-    box-shadow: var(--tw-ring-offset-shadow), var(--tw-ring-shadow), var(--tw-shadow, 0 0 #0000);
-    --tw-ring-color: var(--primary);
-    outline: 2px solid transparent;
-    outline-offset: 2px;
+    background-color: var(--secondary);
+    font-weight: 500;
 }
 
 /* 对比弹窗表格样式 */
@@ -541,7 +536,6 @@ th.sticky-first-col, td.sticky-first-col {
     left: 0;
     z-index: 35; /* 比一般固定列更高的层级 */
     background-color: var(--background);
-    border-right: 1px solid var(--border) !important; /* 只保留右边框，避免边框叠加 */
     box-shadow: inset 0 0 0 1px var(--border); /* 添加内部阴影确保边框显示 */
     vertical-align: middle; /* 垂直居中对齐 */
     text-align: center; /* 文本居中对齐 */
@@ -550,6 +544,7 @@ th.sticky-first-col, td.sticky-first-col {
     white-space: nowrap; /* 确保内容不换行 */
     overflow: hidden; /* 隐藏溢出内容 */
     text-overflow: ellipsis; /* 溢出时显示省略号 */
+    transform: translateX(-1px); /* 向左平移一个像素 */
 }
 
 #data-table td {
@@ -558,4 +553,9 @@ th.sticky-first-col, td.sticky-first-col {
     white-space: nowrap;
     overflow: hidden;
     max-width: 300px; /* 限制单元格最大宽度，防止表格过宽 */
+}
+
+/* 首页表格第一列添加右侧边框 */
+#data-table td:first-child {
+    border-right: 1px solid var(--border);
 }
